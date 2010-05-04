@@ -2,7 +2,7 @@
 import types
 from collections import MutableSet, MutableSequence, MutableMapping
 import numpy
-
+from operator import itemgetter as _itemgetter
 
 class PipelineError(Exception):
     pass
@@ -77,6 +77,16 @@ def gmap(func, target, catch=NoError):
                 out = target.send(func((yield out)))
         except catch:
             pass
+        
+def getter(idx, target):
+    """
+    This is such a common operation, it gets its own consumer
+    """
+    target = check(target)
+    out = target.next()
+    get = _itemgetter(idx)
+    while True:
+        out = target.send(get((yield out)))
         
         
 def pull(itr, target):
