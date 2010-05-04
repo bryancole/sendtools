@@ -8,6 +8,11 @@ class PipelineError(Exception):
     pass
 
 
+class NoError(Exception):
+    """Should never be raised"""
+    pass
+
+
 def make_node(func):
     """A decorator to initialise a generator for use in 
     a push-based pipeline
@@ -57,7 +62,7 @@ def add(s):
         s.add((yield s))
         
         
-def gmap(func, target):
+def gmap(func, target, catch=NoError):
     """
     gmap(func, target) -> Consumer generator
     
@@ -67,7 +72,11 @@ def gmap(func, target):
     target = check(target)
     out = target.next()
     while True:
-        out = target.send(func((yield out)))
+        try:
+            while True:
+                out = target.send(func((yield out)))
+        except catch:
+            pass
         
         
 def pull(itr, target):
@@ -281,6 +290,7 @@ def switch_by_key(test, init={}, factory=lambda :[]):
             init[key] = t
             val = t.send(data)
             out[key] = val
+            
         
 ###re-merging doesn't work reliably###
 def merge(target):
@@ -403,8 +413,6 @@ def select(n, transform=lambda x:x):
     i = transform(i)
     while True:
         yield i
-    
-    
 
 
                     
