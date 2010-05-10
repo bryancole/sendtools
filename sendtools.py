@@ -287,7 +287,7 @@ def switch(test, *targets):
         
         
 def switch_by_key(test, init={}, factory=lambda :[]):
-    out = dict((k,k.next()) for k in init)
+    out = dict((k,init[k].next()) for k in init)
     while True:
         data = (yield out)
         key = test(data)
