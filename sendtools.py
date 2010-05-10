@@ -286,8 +286,21 @@ def switch(test, *targets):
         out[idx] = targets[idx].send(data)
         
         
-def switch_by_key(test, init={}, factory=lambda :[]):
-    out = dict((k,init[k].next()) for k in init)
+def switch_by_key(test, init=None, factory=lambda :[]):
+    """
+    switch_by_key(test, init=None, factory=lambda :[]) -> Consumer generator
+    
+    For each items sent in to this generator, test(item) is called to obtain
+    a key value. This key is used to index the output dictionary for a target
+    consumer to send the data in to. If no target is found in the dictionary,
+    factory is called to create a new target and place it in the dict. 
+    
+    The target dictionary may be pre-initialised by passing in a dict as the init
+    keyword argument. The default factory creates list.
+    """
+    if init is None:
+        init = {}
+    out = dict((k,k.next()) for k in init)
     while True:
         data = (yield out)
         key = test(data)
