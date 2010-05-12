@@ -78,7 +78,7 @@ def gmap(func, target, catch=NoError):
         except catch:
             pass
         
-def getter(idx, target):
+def getter(target, idx):
     """
     This is such a common operation, it gets its own consumer
     """

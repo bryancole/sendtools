@@ -17,6 +17,12 @@ cdef class Consumer(object):
     def send(self, object item):
         return self.send_(item)
     
+    cdef close_(self):
+        self._alive = 0
+        
+    def close(self):
+        self.close_()
+    
     
 cdef class ConsumerSink(Consumer):
     cdef object output
@@ -27,12 +33,21 @@ cdef class ConsumerSink(Consumer):
     def __next__(self):
         return self.output
     
+    cdef close_(self):
+        self._alive = 0
+    
     
 cdef class ConsumerNode(Consumer):
     cdef Consumer target
         
     def __next__(self):
         return self.target.next()
+    
+    cdef close_(self):
+        if self._alive:
+            self.target.close_()
+        self._alive = 0
+    
     
     
 cdef class Append(ConsumerSink):
@@ -42,6 +57,9 @@ cdef class Append(ConsumerSink):
     cdef object send_(self, object item):
         (<list>self.output).append(item)
         return self.output
+    
+    cdef close_(self):
+        self._alive = 0
     
     
 cdef class Split(ConsumerNode):
@@ -70,6 +88,12 @@ cdef class Split(ConsumerNode):
         if alive==0:
             raise StopIteration
         return tuple(self.output)
+    
+    cdef close_(self):
+        cdef Consumer t
+        if self._alive:
+            for t in self.targets:
+                t.close_()
 
 
 cdef class limit(ConsumerNode):
@@ -83,11 +107,17 @@ cdef class limit(ConsumerNode):
         
     cdef object send_(self, object item):
         if self.count >= self.total:
+            self._alive = 0
             raise StopIteration
         else:
             output = self.target.send_(item)
             self.count += 1
             return output
+        
+    cdef close_(self):
+        if self._alive:
+            self.target.close_()
+        self._alive = 0
 
 
 cdef class gmap(ConsumerNode):
@@ -105,10 +135,42 @@ cdef class gmap(ConsumerNode):
         
     cdef object send_(self, object item):
         cdef object out
+        if not self._alive:
+            raise StopIteration
         try:
             return self.target.send_(self.func(item))
         except self.exc:
-            pass
+            return self.target.next()
+        except:
+            self._alive = 0
+            raise
+        
+    cdef close_(self):
+        if self._alive:
+            self.target.close_()
+        self._alive = 0
+        
+        
+cdef class getter(ConsumerNode):
+    cdef object selector
+    
+    def __cinit__(self, target, idx):
+        self.selector = idx
+        self.target = check(target)
+        
+    cdef object send_(self, object item):
+        return self.target.send_(item[self.selector])
+    
+    
+cdef class attr(ConsumerNode):
+    cdef object attrname
+    
+    def __cinit__(self, target, name):
+        self.attrname = str(name)
+        self.target = check(target)
+        
+    cdef object send_(self, object item):
+        return self.target.send_(getattr(item, self.attrname))
         
         
 cdef class Factory(object):
@@ -125,7 +187,7 @@ cdef class Factory(object):
 cdef class group_by_n(ConsumerNode):
     cdef:
         unsigned int n, count
-        object factory
+        object factory, output
         Consumer this_grp
         
     def __cinit__(self, unsigned int n, target, factory=list):
@@ -138,9 +200,12 @@ cdef class group_by_n(ConsumerNode):
         checked = check(first)
         if type(checked) != type(first):
             self.factory = Factory(factory)
-            self.this_grp = checked
         else:
             self.factory = factory
+            
+        self.this_grp = checked
+        self.output = self.target.next()
+        
         
     cdef object send_(self, object item):
         cdef:
@@ -149,13 +214,74 @@ cdef class group_by_n(ConsumerNode):
         gout = self.this_grp.send_(item)
         self.count += 1
         if self.count >= self.n:
-            output = self.target.send_(gout)
+            self.output = self.target.send_(gout)
             self.count = 0
             self.this_grp = self.factory()
-        return output
+        return self.output
+    
+    cdef close_(self):
+        if self._alive:
+            self.target.close_()
+        self._alive = 0
+    
+    
+cdef class NULL_OBJ(object):
+    def __richcmp__(self, other, op):
+        return True
 
 
-def check(target):
+cdef class group_by_key(ConsumerNode):
+    cdef:
+        object factory, keyfunc, thiskey, grp_output, output
+        Consumer this_grp
+        
+    def __cinit__(self, target, keyfunc=None, factory=list):
+        if keyfunc is not None:
+            assert isinstance(keyfunc, Callable)
+        assert isinstance(factory, Callable)
+        self.target = check(target)
+        self.keyfunc = keyfunc
+        self.factory = factory
+        
+        first = factory()
+        checked = check(first)
+        if type(checked) != type(first):
+            self.factory = Factory(factory)
+        else:
+            self.factory = factory
+        self.this_grp = checked
+        self.grp_output = checked.next()
+        self.output = self.target.next()
+        self.thiskey = NULL_OBJ()
+        
+    cdef object send_(self, item):
+        if not self._alive:
+            raise StopIteration
+        
+        if self.keyfunc is None:
+            key = item
+        else:
+            key = self.keyfunc(item)
+            
+        if key==self.thiskey:
+            pass
+        else:
+            self.output = self.target.send_(self.grp_output)
+            self.this_grp = self.factory()
+        self.grp_output = self.this_grp.send_(item)
+        self.thiskey = key
+        return self.output
+
+    cdef close_(self):
+        self.target.send_(self.grp_output)
+        self._alive = 0
+        
+##############################################################################
+###Aggregate functions: min, max, sum, count, ave, std, first, last, select###
+##############################################################################
+
+
+cdef check(target):
     """
     check(target) -> wrapped target
     
@@ -194,4 +320,5 @@ def send(object itr, object target_in):
             out = target.send_(item)
     except StopIteration:
         pass
+    target.close_()
     return out

@@ -59,6 +59,18 @@ class TestSendtools(unittest.TestCase):
         b = st.send(a, st.group_by_n(10, []))
         self.assertTrue(all(len(x) for x in b))
         
+    def test_null_obj(self):
+        self.assertTrue(12.5 == st.NULL_OBJ())
+        self.assertTrue(st.NULL_OBJ() == "moo")
+        
+        
+class TestGroupByKey(unittest.TestCase):
+    def test_key_group(self):
+        data = ([1]*5) + ([4]*9) + ([3]*7)
+        result = st.send(data, st.group_by_key([]) )
+        self.assertTrue(result==[[1]*5,[4]*9,[3]*7])
+        
+        
 if __name__=="__main__":
     unittest.main()
     

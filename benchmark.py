@@ -14,15 +14,15 @@ def source():
         yield (i, itr.next())
         
 def test1(m):
-    a,b,c = m.send(xrange(100000), ([], [], []) )
+    a,b = m.send(source(), (m.getter([],0), 
+                            m.getter(m.gmap(len, []),1)) )
     
 def test_for_loop():
-    a,b,c = [], [], []
-    for i in xrange(100000):
+    a,b = [], []
+    for i,j in source():
         a.append(i)
-        b.append(i)
-        c.append(i)
-    return a,b,c
+        b.append(len(j))
+    return a,b
         
     
 t1 = timeit.Timer("test1(st1)", "from __main__ import st1, test1")
