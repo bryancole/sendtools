@@ -6,66 +6,78 @@ from types import TupleType
 
 
 cdef class Consumer(object):
-    cdef object _output
     cdef int _alive
     
     def __cinit__(self, *args, **kwds):
         self._alive = 1
-
-    def __next__(self):
-        return self._output
     
     cdef object send_(self, object item):
-        pass
+        raise NotImplementedError
     
     def send(self, object item):
         return self.send_(item)
     
     
-cdef class Append(Consumer):
-    def __cinit__(self, output):
+cdef class ConsumerSink(Consumer):
+    cdef object output
+    
+    def __cinit__(self, output, *args, **kdws):
+        self.output = output
+        
+    def __next__(self):
+        return self.output
+    
+    
+cdef class ConsumerNode(Consumer):
+    cdef Consumer target
+        
+    def __next__(self):
+        return self.target.next()
+    
+    
+cdef class Append(ConsumerSink):
+    def __cinit__(self, output, *args, **kdws):
         assert isinstance(output, list)
-        self._output = output
         
     cdef object send_(self, object item):
-        <list>self._output.append(item)
-        return self._output
+        (<list>self.output).append(item)
+        return self.output
     
     
-cdef class Split(Consumer):
+cdef class Split(ConsumerNode):
     cdef:
-        list _targets
+        list targets, output
 
     def __cinit__(self, *targets):
-        self._targets = [check(t) for t in targets]
-        self._output = [t.next() for t in self._targets]
+        self.targets = [check(t) for t in targets]
+        self.output = [t.next() for t in self.targets]
+        
+    def __next__(self):
+        return tuple(self.output)
         
     cdef object send_(self, object item):
         cdef:
-            int i=0,alive=0
+            int i=0,alive=0, size=len(self.targets)
             Consumer t
-            list out
-        for i in xrange(len(self._targets)):
-            t = self._targets[i]
+        for i in xrange(size):
+            t = self.targets[i]
             if t._alive:
                 try:
-                    self._output[i] = t.send_(item)
+                    self.output[i] = t.send_(item)
                     alive = 1
                 except StopIteration:
                     t._alive = 0
         if alive==0:
             raise StopIteration
-        return tuple(self._output)
+        return tuple(self.output)
 
 
-cdef class limit(Consumer):
+cdef class limit(ConsumerNode):
     cdef:
         unsigned int count, total
-        Consumer target
         
     def __cinit__(self, unsigned int n, target):
         self.target = check(target)
-        self._output = self.target.next()
         self.total = n
         self.count = 0
         
@@ -77,9 +89,9 @@ cdef class limit(Consumer):
             self.count += 1
             return output
 
-cdef class gmap(Consumer):
+
+cdef class gmap(ConsumerNode):
     cdef:
-        Consumer target
         object func
         object exc
         
@@ -89,15 +101,12 @@ cdef class gmap(Consumer):
             assert issubclass(catch, BaseException)
         self.func = func
         self.target = check(target)
-        self._output = self.target.next()
         self.exc = catch
         
     cdef object send_(self, object item):
         cdef object out
         try:
-            out = self.target.send_(self.func(item))
-            self._output = out
-            return out
+            return self.target.send_(self.func(item))
         except self.exc:
             pass
         
@@ -113,10 +122,9 @@ cdef class Factory(object):
         return check(self.factory())
         
         
-cdef class group_by_n(Consumer):
+cdef class group_by_n(ConsumerNode):
     cdef:
         unsigned int n, count
-        Consumer target
         object factory
         Consumer this_grp
         
@@ -133,20 +141,18 @@ cdef class group_by_n(Consumer):
             self.this_grp = checked
         else:
             self.factory = factory
-            
-        self._output = self.target.next()
         
     cdef object send_(self, object item):
         cdef:
-            object gout, out
+            object gout, out, output
     
         gout = self.this_grp.send_(item)
         self.count += 1
         if self.count >= self.n:
-            self._output = self.target.send_(gout)
+            output = self.target.send_(gout)
             self.count = 0
             self.this_grp = self.factory()
-        return self._output
+        return output
 
 
 def check(target):
