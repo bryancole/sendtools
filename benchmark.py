@@ -9,9 +9,9 @@ import itertools
 import timeit
 
 def source():
-    itr = itertools.cycle("hello world")
+    #itr = itertools.cycle("hello world")
     for i in xrange(100000):
-        yield (i, itr.next())
+        yield (i, ("b",i))
         
 def test1(m):
     a,b = m.send(source(), (m.getter([],0), 
