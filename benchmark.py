@@ -29,12 +29,12 @@ t1 = timeit.Timer("test1(st1)", "from __main__ import st1, test1")
 T1 = t1.timeit(5)
 print "C version:", T1
 
-t2 = timeit.Timer("test1(st2)", "from __main__ import st2, test1")
-T2 = t2.timeit(5)
-print "Py version:", T2
+#t2 = timeit.Timer("test1(st2)", "from __main__ import st2, test1")
+#T2 = t2.timeit(5)
+#print "Py version:", T2
 
 t3 = timeit.Timer("test_for_loop()", "from __main__ import test_for_loop")
 T3 = t3.timeit(5)
 print "For-loop version:", T3
 
-print "ratio", T2/T1
+print "ratio", T1/T3

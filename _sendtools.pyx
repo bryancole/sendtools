@@ -99,7 +99,7 @@ cdef class Split(ConsumerNode):
         self._alive = 0
 
 
-cdef class limit(ConsumerNode):
+cdef class Limit(ConsumerNode):
     cdef:
         unsigned int count, total
         
@@ -117,7 +117,7 @@ cdef class limit(ConsumerNode):
             self.count += 1
 
 
-cdef class gmap(ConsumerNode):
+cdef class Map(ConsumerNode):
     cdef:
         object func
         object exc
@@ -143,7 +143,7 @@ cdef class gmap(ConsumerNode):
             raise
         
         
-cdef class getter(ConsumerNode):
+cdef class Get(ConsumerNode):
     cdef object selector
     
     def __cinit__(self, target, idx):
@@ -154,7 +154,7 @@ cdef class getter(ConsumerNode):
         self.target.send_(item[self.selector])
     
     
-cdef class attr(ConsumerNode):
+cdef class Attr(ConsumerNode):
     cdef object attrname
     
     def __cinit__(self, target, name):
@@ -176,7 +176,7 @@ cdef class Factory(object):
         return check(self.factory())
         
         
-cdef class group_by_n(ConsumerNode):
+cdef class GroupByN(ConsumerNode):
     cdef:
         unsigned int n, count
         object factory, output
@@ -214,9 +214,17 @@ cdef class group_by_n(ConsumerNode):
 cdef class NULL_OBJ(object):
     def __richcmp__(self, other, op):
         return True
+    
+    def __add__(x, y):
+        if not isinstance(y, NULL_OBJ):
+            return y
+        elif not isinstance(x, NULL_OBJ):
+            return x
+        else:
+            return NotImplemented
 
 
-cdef class group_by_key(ConsumerNode):
+cdef class GroupByKey(ConsumerNode):
     cdef:
         object factory, keyfunc, thiskey, grp_output, output
         Consumer this_grp
@@ -267,6 +275,58 @@ cdef class group_by_key(ConsumerNode):
 ###Aggregate functions: min, max, sum, count, ave, std, first, last, select###
 ##############################################################################
 
+cdef class Aggregate(Consumer):
+    cdef object output
+    
+    def __cinit__(self):
+        self.output = NULL_OBJ()
+    
+    cdef object result_(self):
+        return self.output
+
+
+cdef class Min(Aggregate):
+    cdef void send_(self, item) except *:
+        if item < self.output:
+            self.output = item
+
+
+cdef class Max(Aggregate):
+    cdef void send_(self, item) except *:
+        if item > self.output:
+            self.output = item
+            
+            
+cdef class Sum(Aggregate):
+    cdef void send_(self, item) except *:
+        self.output += item
+        
+        
+cdef class Count(Aggregate):
+    cdef unsigned int count
+    
+    def __cinit__(self):
+        self.count = 0
+    
+    cdef void send_(self, item) except *:
+        self.count += 1
+            
+    cdef object result_(self):
+        return self.count
+    
+    
+cdef class Ave(Aggregate):
+    cdef unsigned int count
+    
+    def __cinit__(self):
+        self.count = 0
+        self.output = 0.0
+    
+    cdef void send_(self, item) except *:
+        self.count += 1
+        self.output += (item-self.output)/self.count
+    
+            
 
 cdef check(target):
     """
