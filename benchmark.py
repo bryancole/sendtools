@@ -14,8 +14,8 @@ def source():
         yield (i, ("b",i))
         
 def test1(m):
-    a,b = m.send(source(), (m.getter([],0), 
-                            m.getter(m.gmap(len, []),1)) )
+    a,b = m.send(source(), (m.Get(0, []), 
+                            m.Get(1, m.Map(len, [])) ))
     
 def test_for_loop():
     a,b = [], []

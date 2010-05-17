@@ -9,6 +9,7 @@ pyximport.install()
 import _sendtools as st
 import itertools
 import random
+from collections import defaultdict
 
 class TestSendtools(unittest.TestCase):
     def test_send(self):
@@ -65,11 +66,62 @@ class TestSendtools(unittest.TestCase):
         self.assertTrue(st.NULL_OBJ() == "moo")
         
         
+class TestAddToSet(unittest.TestCase):
+    def test_set(self):
+        data = xrange(10)
+        result = st.send(data, set())
+        self.assertEquals(set(data), result)
+        
+        
 class TestGroupByKey(unittest.TestCase):
     def test_key_group(self):
         data = ([1]*5) + ([4]*9) + ([3]*7)
         result = st.send(data, st.GroupByKey([]) )
         self.assertTrue(result==[[1]*5,[4]*9,[3]*7])
+        
+        
+class TestSwitchByKey(unittest.TestCase):
+    def test_no_init_no_factory_no_test(self):
+        data = [1,2,4,3,2,2,2,3,2,2,3,1,2,4,4,4]
+        result = st.send(data, st.SwitchByKey())
+        vals = defaultdict(list)
+        for item in data:
+            vals[item].append(item)
+        self.assertEquals(result, vals)
+        
+    def test_no_init_no_factory(self):
+        data = [1,2,4,3,2,2,2,3,2,2,3,1,2,4,4,4]
+        result = st.send(data, st.SwitchByKey(lambda x:"hello"[x]))
+        vals = defaultdict(list)
+        for item in data:
+            vals["hello"[item]].append(item)
+        self.assertEquals(result, vals)
+        
+    def test_no_init(self):
+        data = [1,2,4,3,2,2,2,3,2,2,3,1,2,4,4,4]
+        data = [(a,i) for i,a in enumerate(data)]
+        result = st.send(data, st.SwitchByKey(lambda x:x[0],
+                                    factory=lambda :st.Map(lambda x:x[1], set())))
+        vals = defaultdict(set)
+        for item in data:
+            vals[item[0]].add(item[1])
+        self.assertEquals(result, vals)
+        
+    def test_gbk(self):
+        data = [1,2,4,3,2,2,2,3,2,2,3,1,2,4,4,4]
+        data = [(a,i) for i,a in enumerate(data)]
+        result = st.send(data, st.SwitchByKey(lambda x:x[0], 
+                                    init={1:st.Get(1,[]),
+                                        2:st.Get(1, set()),
+                                        3:st.Get(1, st.Sum())},
+                                    factory=lambda : st.Get(1,[])
+                                    ))
+        vals = {}
+        vals[1] = [i for a,i in data if a==1]
+        vals[2] = set([i for a,i in data if a==2])
+        vals[3] = sum(i for a,i in data if a==3)
+        vals[4] = [i for a,i in data if a==4]
+        self.assertEquals(result, vals)
         
         
 class TestAggregates(unittest.TestCase):
@@ -94,7 +146,10 @@ class TestAggregates(unittest.TestCase):
         
     def test_ave(self):
         result = st.send(self.data, st.Ave())
-        self.assertEquals(sum(self.data)/len(self.data), result)
+        self.assertAlmostEquals(sum(self.data)/len(self.data), result)
+        
+        
+        
         
         
 if __name__=="__main__":
