@@ -2,7 +2,13 @@
 from distribute_setup import use_setuptools
 use_setuptools()
 
-from setuptools import setup
+from distutils.core import setup
+from distutils.extension import Extension
+from Cython.Distutils import build_ext
+
+#from setuptools import setup
+
+ext_modules = [Extension("sendtools", ["sendtools.pyx"])]
 
 setup(name='sendtools',
       version='0.1.0',
@@ -11,7 +17,8 @@ setup(name='sendtools',
       author='Bryan Cole',
       author_email='bryancole.cam@googlemail.com',
       url='http://bitbucket.org/bryancole/sendtools',
-      py_modules=['sendtools'],
+      cmdclass = {'build_ext': build_ext},
+      ext_modules = ext_modules,
       classifiers=['Development Status :: 3 - Alpha',
                 'Intended Audience :: Developers',
                 'License :: OSI Approved :: Python Software Foundation License',

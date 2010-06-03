@@ -6,10 +6,11 @@ import unittest
 import pyximport
 pyximport.install()
 
-import _sendtools as st
+import sendtools as st
 import itertools
 import random
 from collections import defaultdict
+from math import sqrt
 
 class TestSendtools(unittest.TestCase):
     def test_send(self):
@@ -124,6 +125,23 @@ class TestSwitchByKey(unittest.TestCase):
         self.assertEquals(result, vals)
         
         
+class TestSlice(unittest.TestCase):
+    def test_slice_1(self):
+        data = range(10)
+        ret = st.send(data, st.Slice(7, []))
+        self.assertEquals(ret, data[slice(7)])
+        
+    def test_slice_2(self):
+        data = range(20)
+        ret = st.send(data, st.Slice(7,13, []))
+        self.assertEquals(ret, data[slice(7,13)])
+        
+    def test_slice_3(self):
+        data = range(30)
+        ret = st.send(data, st.Slice(7,23,3, []))
+        self.assertEquals(ret, data[slice(7,23,3)])
+        
+        
 class TestAggregates(unittest.TestCase):
     def setUp(self):
         self.data = [random.random() for i in xrange(50)]
@@ -148,7 +166,14 @@ class TestAggregates(unittest.TestCase):
         result = st.send(self.data, st.Ave())
         self.assertAlmostEquals(sum(self.data)/len(self.data), result)
         
-        
+    def test_stats(self):
+        result = st.send(self.data, st.Stats())
+        N = len(self.data)
+        mean = sum(self.data)/N
+        self.assertAlmostEquals(mean, result[1])
+        std = sqrt(sum((x-mean)**2 for x in self.data)/(N-1))
+        self.assertAlmostEquals(std, result[2])
+        self.assertEquals(N, result[0])
         
         
         

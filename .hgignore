@@ -2,3 +2,4 @@ syntax: glob
 
 doc/rst2s5*
 *.pyc
+build/*

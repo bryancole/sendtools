@@ -4,9 +4,14 @@ A cython implementation of the sendtools API
 from collections import MutableSequence, MutableSet, Callable, defaultdict,\
             MutableMapping
 from types import TupleType
+from math import sqrt
 
 
 cdef class Consumer(object):
+    """
+    (Abstract) base class for Consumer objects. Not intended to be instantiated
+    directly.
+    """
     cdef int _alive
     
     def __cinit__(self, *args, **kwds):
@@ -36,6 +41,9 @@ cdef class Consumer(object):
     
     
 cdef class ConsumerSink(Consumer):
+    """
+    Abstract base class for Consumers forming the terminating nodes in a chain
+    """
     cdef object output
     
     def __cinit__(self, output, *args, **kdws):
@@ -46,6 +54,9 @@ cdef class ConsumerSink(Consumer):
     
     
 cdef class ConsumerNode(Consumer):
+    """
+    Abstract base class for Consumers which pass on data to a target Consumer
+    """
     cdef Consumer target
         
     cdef object result_(self):
@@ -116,6 +127,12 @@ cdef class Split(ConsumerNode):
 
 
 cdef class Limit(ConsumerNode):
+    """
+    Limit(n, target) -> Consumer object
+    
+    Passes up to n items sent in to the consumer on to it's target. Sending
+    further items raise StopIteration
+    """
     cdef:
         unsigned int count, total
         
@@ -131,9 +148,61 @@ cdef class Limit(ConsumerNode):
         else:
             self.target.send_(item)
             self.count += 1
+            
+
+cdef class Slice(ConsumerNode):
+    """
+    Slice([start,] stop[, step], target) -> Consumer
+    
+    Acts like builtin slice, but for consumers. 
+    """
+    cdef:
+        unsigned int count, nxt
+        unsigned int start, stop, step
+        
+    def __cinit__(self, *args):
+        cdef unsigned int i, nargs=len(args)
+        if nargs>4:
+            raise TypeError("Slice expects at most 4 arguments, got %d"%nargs)
+        if nargs<2:
+            raise TypeError("Slice requires at least 2 arguments, got %d"%nargs)
+        self.target = check(args[-1])
+        if nargs==2:
+            self.stop = args[0]
+            self.start = 0
+            self.step = 1
+        else:
+            self.start = args[0]
+            self.stop = args[1]
+            if nargs==4:
+                self.step = args[2]
+            else:
+                self.step = 1
+        if self.stop < 0:
+            raise TypeError("stop value may not be None")
+        self.count = 0
+        self.nxt = self.start
+        
+    cdef void send_(self, object item) except *:
+        if self.nxt >= self.stop:
+            self._alive = 0
+            raise StopIteration
+        if self.count == self.nxt:
+            self.target.send_(item)
+            self.nxt += self.step
+        self.count += 1
 
 
 cdef class Map(ConsumerNode):
+    """
+    Map(func, target, catch=None) -> Consumer
+    
+    For each item send into this consumer, func is called with the item as
+    it's argument. The result is send on to target. catch may be an exception
+    or tuple of exception. If func raises one of these specified exceptions, 
+    they are handled by the Map consumer (i.e. do not propagate) so the consumer
+    remains alive to receive further items.
+    """
     cdef:
         object func
         object exc
@@ -160,6 +229,14 @@ cdef class Map(ConsumerNode):
         
         
 cdef class Get(ConsumerNode):
+    """
+    Get(idx, target) -> Consumer
+    
+    Items sent into this consumer are sliced using idx as the slicing object. The
+    result is passed on to target.
+    
+    Should I have called this Item?
+    """
     cdef object selector
     
     def __cinit__(self, idx, target):
@@ -171,6 +248,12 @@ cdef class Get(ConsumerNode):
     
     
 cdef class Attr(ConsumerNode):
+    """
+    Attr(name, target) -> Consumer
+    
+    Retrieves the named attribute from objects send into this object and passes
+    them on to the target
+    """
     cdef object attrname
     
     def __cinit__(self, name, target):
@@ -193,6 +276,22 @@ cdef class Factory(object):
         
         
 cdef class GroupByN(ConsumerNode):
+    """
+    GroupByN(n, target, factory=list) -> Consumer
+    
+    Items sent in to this object are partitioned into groups of size n. The
+    groups are consumers too. factory, if given, is a function called to create
+    each group (a list, by default).
+    
+    An example should help:
+    >>> data = range(15)
+    >>> send(data, GroupByN(4, []))
+    [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]]
+    >>> send(data, GroupByN(4, [], factory=Sum))
+    [6, 22, 38]
+    
+    Note, incomplete groups are *never* passed on.
+    """
     cdef:
         unsigned int n, count
         object factory, output
@@ -241,6 +340,23 @@ cdef class NULL_OBJ(object):
 
 
 cdef class GroupByKey(ConsumerNode):
+    """
+    GroupByKey(target, keyfunc=None, factory=list) -> Consumer
+    
+    For each item passed in keyfunc is called with the item as it's argument.
+    If the result is not equal to that of the previous item, a new group is created
+    by calling factory and the current item sent into that group.
+    
+    When a group is finalised (either by starting a new group or when the GroupByKey
+    object goes out-of-scope), it is sent on to the target.
+    
+    If keyfunc is not specified, the item is used directly.
+    
+    For example:
+    >>> data = [3,3,3,3,3,5,5,2,2,2,2,3,3,3]
+    >>> send(data, GroupByKey([]))
+    [[3, 3, 3, 3, 3], [5, 5], [2, 2, 2, 2], [3, 3, 3]]
+    """
     cdef:
         object factory, keyfunc, thiskey, grp_output, output
         Consumer this_grp
@@ -390,6 +506,33 @@ cdef class Ave(Aggregate):
     cdef void send_(self, item) except *:
         self.count += 1
         self.output += (item-self.output)/self.count
+        
+        
+cdef class Stats(Aggregate):
+    """
+    Aggregate Consumer. Computes a running count, average and 
+    (unbiased) standard deviation.
+    
+    The output is a tuple -> (count, mean, std)
+    """
+    cdef: 
+        unsigned int n
+        double mean, M2
+        
+    def __cinit__(self):
+        self.n = 0
+        self.mean = 0.0
+        self.M2 = 0.0
+        
+    cdef void send_(self, item) except *:
+        cdef double delta
+        self.n += 1
+        delta = item - self.mean
+        self.mean += delta/self.n
+        self.M2 += delta*(item - self.mean)
+    
+    cdef object result_(self):
+        return (self.n, self.mean, sqrt(self.M2/(self.n - 1)))
     
     
 cdef class First(Aggregate):

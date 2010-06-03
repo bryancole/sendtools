@@ -3,8 +3,8 @@
 import pyximport
 pyximport.install()
 
-import _sendtools as st1
-import sendtools as st2
+import sendtools as st1
+import py_sendtools as st2
 import itertools
 import timeit
 
