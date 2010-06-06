@@ -142,6 +142,14 @@ class TestSlice(unittest.TestCase):
         self.assertEquals(ret, data[slice(7,23,3)])
         
         
+class TestFilter(unittest.TestCase):
+    def test_filter(self):
+        data = range(30)
+        func = lambda x:not x%3
+        ret = st.send(data, st.Filter(func, []))
+        self.assertEquals(ret, filter(func, data))
+        
+        
 class TestAggregates(unittest.TestCase):
     def setUp(self):
         self.data = [random.random() for i in xrange(50)]

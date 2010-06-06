@@ -1,9 +1,10 @@
+#!python
 """
 A cython implementation of the sendtools API
 """
 from collections import MutableSequence, MutableSet, Callable, defaultdict,\
             MutableMapping
-from types import TupleType
+from types import TupleType, GeneratorType
 from math import sqrt
 
 
@@ -191,7 +192,35 @@ cdef class Slice(ConsumerNode):
             self.target.send_(item)
             self.nxt += self.step
         self.count += 1
-
+        
+        
+cdef class Filter(ConsumerNode):
+    """
+    Filter(func, target) -> Consumer
+    
+    For each item sent into a Filter instance, func(item) is called and if the
+    result evaluates to True, the item is send to the target. Otherwise, the item
+    is dropped.
+    """
+    cdef:
+        object func
+        
+    def __cinit__(self, func, target):
+        if not isinstance(func, Callable):
+            raise TypeError("first argument must be a callable")
+        self.func = func
+        self.target = check(target)
+        
+    cdef void send_(self, object item) except *:
+        if not self._alive:
+            raise StopIteration
+        try:
+            if self.func(item):
+                self.target.send_(item)
+        except:
+            self._alive = 0
+            raise
+        
 
 cdef class Map(ConsumerNode):
     """
@@ -216,7 +245,6 @@ cdef class Map(ConsumerNode):
         self.exc = catch
         
     cdef void send_(self, object item) except *:
-        cdef object out
         if not self._alive:
             raise StopIteration
         try:
@@ -615,3 +643,46 @@ def send(object itr, object target_in):
     out = target.result_()
     target.close_()
     return out
+
+
+
+cdef class GeneratorConsumer(Consumer):
+    """
+    A class for creating a Consumer from a generator. 
+    
+    Not usually instantiated directly, but is created by a consumer 
+    decorator.
+    """
+    cdef: 
+        object gen
+        object out
+    
+    def __cinit__(self, gen):
+        self.gen = gen
+        self.out = gen.next()
+        
+    cdef void send_(self, item) except *:
+        self.out = self.gen.send(item)
+        
+    cdef object result_(self):
+        return self.out
+
+
+cdef class consumer(object):
+    """
+    A decorator for building custom Consumer objects from a generator function
+    """
+    cdef:
+        object func
+    
+    def __cinit__(self, func):
+        if not isinstance(func, Callable):
+            raise TypeError("first argument must be callable")
+        self.func = func
+        self.__doc__ = func.__doc__
+        
+    def __call__(self, *args, **kwds):
+        gen = self.func(*args, **kwds)
+        if not isinstance(gen, GeneratorType):
+            raise TypeError("wrapped function must return a generator")
+        return GeneratorConsumer(gen)
