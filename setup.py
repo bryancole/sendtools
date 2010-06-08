@@ -11,7 +11,7 @@ from Cython.Distutils import build_ext
 ext_modules = [Extension("sendtools", ["sendtools.pyx"])]
 
 setup(name='sendtools',
-      version='0.1.0',
+      version='0.1.1',
       description='Tools for composing consumers for iterators. A companion '
       'to itertools.',
       long_description = open("README.rst").read(),
