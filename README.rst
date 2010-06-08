@@ -9,12 +9,12 @@ Overview
 --------
 
 Sendtools is a collections of classes for efficiently consuming iterators into 
-one or more data structures. It compliments the itertools module and other the 
+one or more data structures. It compliments the itertools module and the other 
 excellent facilities python offers for iteration. Sendtools is useful when:
 
  * Your source iterator is too big to fit in memory
- * Your data source is I/O bounds so you don't want to make more than one pass
- * You want to collect data into two or more lists (or other collection)
+ * Your data source is I/O-bound so you don't want to make more than one pass
+ * You want to collect data into two or more lists (or other collections)
  * You want to group, filter, transform or otherwise aggregate the data
 
 Such situations occur when you're analysing query-sets from large databases or 
