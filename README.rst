@@ -53,20 +53,20 @@ Usage
 Sendtools is built on the concept of "Consumer" objects. These were inspired by 
 python's generators (an early version of sendtools was implemented in python 
 using generators). Consumer objects can have data "sent" into them. Unlike 
-generators, Consumers do not produce data iteratively (no 'next' method), 
-but they do produce a result which can be accessed at any time using the .result() 
+generators, Consumers do not produce data iteratively (no ``next`` method), 
+but they do produce a result which can be accessed at any time using the ``.result()`` 
 method.
 
-Data is typically sent into a Consumer using the sendtools.send() function, 
+Data is typically sent into a Consumer using the ``sendtools.send()`` function, 
 which takes the form::
 
     output = send(source, target)
 
-where source is an iterator producing data. target is a Consumer object into 
-which the data is sent. output is the Consumer's result, returned after the 
+where ``source`` is an iterator producing data. ``target`` is a Consumer object into 
+which the data is sent. ``output`` is the Consumer's result, returned after the 
 source has been fully consumed, or the Consumer indicates it's complete (by 
-raising StopIteration), which ever happens first. Basically, the send function 
-if a shortcut for writing a for-loop. It's equivalent to (but faster than)::
+raising StopIteration), whichever happens first. Basically, the send function 
+is a shortcut for writing a for-loop. It's equivalent to (but faster than)::
 
     def send(source, target):
         try:
@@ -76,7 +76,7 @@ if a shortcut for writing a for-loop. It's equivalent to (but faster than)::
             pass
         return target.result()
         
-Note, StopIteration can be raised by target.send(...) to exit the loop (as 
+Note, StopIteration can be raised by ``target.send(...)`` to exit the loop (as 
 well as by the source), so we handle it explicitly.
 
 The target may be list or set, representing the data structure you want to 
@@ -84,7 +84,7 @@ collect the data into. These are implicitly converted to Consumer objects by
 the send function. The input list (or set) is returned by the send function 
 having been filled with data. 
 
-Target can also be a (multiply nested) tuple of consumers. In this case the 
+``target`` can also be a (multiply nested) tuple of consumers. In this case the 
 result will be a tuple which matches the structure of the target tuple, 
 containing the results for each consumer. In this way, data from a source 
 iterator can be collected into multiple lists in a single iteration pass.
@@ -96,7 +96,7 @@ other collection as their result, but a scalar value.
 Examples
 --------
 
-Let's start with basic usage of the send() function::
+Let's start with basic usage of the ``send()`` function::
 
     >>> from sendtools import send
     >>> data = range(10)
@@ -113,7 +113,7 @@ The source 'data' is copied into the target 'out' and this is returned.
 
 Now lets see how to send data into multiple targets::
 
-    >>> a, (b,c) = send(data, ([], ([],[])))
+    >>> a, (b,c) = send(data, ([], ([],[]) ) )
     >>> a is b; b is c; a is c
     False
     False
@@ -280,4 +280,7 @@ start, stop and step values for selection::
     >>> send(data, Slice(5,None,3, []))
     [5, 8, 11, 14, 17]
 
+Slice follows a similar call-signature overloading as used by built-in slice, where
+the step or step and start arguments may be left out. It differs from the built-in 
+slice object in that the stop-index is not required.
 
