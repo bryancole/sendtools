@@ -141,6 +141,11 @@ class TestSlice(unittest.TestCase):
         ret = st.send(data, st.Slice(7,23,3, []))
         self.assertEquals(ret, data[slice(7,23,3)])
         
+    def test_slice_4(self):
+        data = range(30)
+        ret = st.send(data, st.Slice(None,None,3, []))
+        self.assertEquals(ret, data[slice(None,None,3)])
+        
         
 class TestFilter(unittest.TestCase):
     def test_filter(self):
@@ -191,6 +196,19 @@ class TestAggregates(unittest.TestCase):
         std = sqrt(sum((x-mean)**2 for x in self.data)/(N-1))
         self.assertAlmostEquals(std, result[2])
         self.assertEquals(N, result[0])
+        
+    def test_select(self):
+        data = range(10)
+        for i in data:
+            val = st.send(data, st.Select(i))
+            self.assertEquals(val, i)
+            
+    def test_select_trans(self):
+        data = range(10)
+        for i in data:
+            val = st.send(data, st.Select(i,transform=lambda x:2*x))
+            self.assertEquals(val, i*2)
+            
         
         
         

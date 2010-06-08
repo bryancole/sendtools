@@ -66,7 +66,18 @@ where source is an iterator producing data. target is a Consumer object into
 which the data is sent. output is the Consumer's result, returned after the 
 source has been fully consumed, or the Consumer indicates it's complete (by 
 raising StopIteration), which ever happens first. Basically, the send function 
-if a shortcut for writing a for-loop.
+if a shortcut for writing a for-loop. It's equivalent to (but faster than)::
+
+    def send(source, target):
+        try:
+            for item in source:
+                target.send(item)
+        except StopIteration:
+            pass
+        return target.result()
+        
+Note, StopIteration can be raised by target.send(...) to exit the loop (as 
+well as by the source), so we handle it explicitly.
 
 The target may be list or set, representing the data structure you want to 
 collect the data into. These are implicitly converted to Consumer objects by 
@@ -151,6 +162,18 @@ There are a few more besides these:
  * Stats - Computes an incremental standard deviation, mean and count of it's input. 
  
 This last one only works with numerical input and returns a length-3 tuple as it's result.
+
+Here's a (somewhat pointless) example of Select and Stats::
+
+    >>> data = [1,2,3,5,4,2,6,3,4,8,5,6,3,1,5,3,6,3,6,4,2]
+    >>> targets = tuple([Select(i) for i in xrange(0,10,3)])
+    >>> send(data, targets)
+    (1, 5, 6, 8)
+    >>> send(data, Stats())
+    (21L, 3.9047619047619047, 1.868281614338746)
+
+Obviously, a better way to pick out every 3rd item from a series from 0 to 10 
+would be to use the Slice object (see below).
 
 Transformations and Filtering
 -----------------------------
@@ -243,4 +266,18 @@ The init keyword specifies a dictionary of groups with which to initialise
 the object (an empty dict by default). When a new key is encountered (that does 
 not already exist in the dict), the factory function is called to create a new 
 group for this key. 
+
+Slicing
+-------
+
+The Slice object works analogously to the builtin slice function, but for 
+Consumers. Like builtin slice, it takes one to three arguments specifying the
+start, stop and step values for selection::
+
+    >>> data = range(20)
+    >>> send(data, Slice(None,15,3, []))
+    [0, 3, 6, 9, 12]
+    >>> send(data, Slice(5,None,3, []))
+    [5, 8, 11, 14, 17]
+
 

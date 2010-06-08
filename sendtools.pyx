@@ -153,9 +153,18 @@ cdef class Limit(ConsumerNode):
 
 cdef class Slice(ConsumerNode):
     """
-    Slice([start,] stop[, step], target) -> Consumer
+    Slice(stop, target) -> Consumer
+    Slice(start, stop, target) -> Consumer
+    Slice(start, stop, step, target) -> Consumer
     
-    Acts like builtin slice, but for consumers. 
+    Acts like built-in slice, but for consumers. The start, stop and step 
+    arguments are optional (or None). This differs from the built-in slice 
+    object, whose stop value is required. A stop value of zero or None indicates
+    no termination point.
+    
+    At least one parameter besides the target must be specified (since
+    leaving them all out would be pointless and thus is more
+    likely to be a mistake)
     """
     cdef:
         unsigned int count, nxt
@@ -169,23 +178,24 @@ cdef class Slice(ConsumerNode):
             raise TypeError("Slice requires at least 2 arguments, got %d"%nargs)
         self.target = check(args[-1])
         if nargs==2:
-            self.stop = args[0]
-            self.start = 0
-            self.step = 1
+            stop = args[0]
+            start = 0
+            step = 1
         else:
-            self.start = args[0]
-            self.stop = args[1]
+            start = args[0]
+            stop = args[1]
             if nargs==4:
-                self.step = args[2]
+                step = args[2]
             else:
-                self.step = 1
-        if self.stop < 0:
-            raise TypeError("stop value may not be None")
+                step = 1
+        self.start = 0 if start is None else start
+        self.stop = 0 if stop is None else stop
+        self.step = 1 if step is None else step
         self.count = 0
         self.nxt = self.start
         
     cdef void send_(self, object item) except *:
-        if self.nxt >= self.stop:
+        if self.nxt >= self.stop > 0:
             self._alive = 0
             raise StopIteration
         if self.count == self.nxt:
@@ -593,7 +603,7 @@ cdef class Select(Aggregate):
     cdef void send_(self, item) except *:
         if self._alive==1:
             if self.n == self.count:
-                if self.transform is not None:
+                if self.transform is None:
                     self.output = item
                 else:
                     self.output = self.transform(item)
