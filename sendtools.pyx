@@ -369,7 +369,7 @@ cdef class NULL_OBJ(object):
 
 cdef class GroupByKey(ConsumerNode):
     """
-    GroupByKey(target, keyfunc=None, factory=list) -> Consumer
+    GroupByKey(keyfunc, target, factory=list) -> Consumer
     
     For each item passed in keyfunc is called with the item as it's argument.
     If the result is not equal to that of the previous item, a new group is created
@@ -378,18 +378,18 @@ cdef class GroupByKey(ConsumerNode):
     When a group is finalised (either by starting a new group or when the GroupByKey
     object goes out-of-scope), it is sent on to the target.
     
-    If keyfunc is not specified, the item is used directly.
+    If keyfunc is specified as None, the item is used directly.
     
     For example:
     >>> data = [3,3,3,3,3,5,5,2,2,2,2,3,3,3]
-    >>> send(data, GroupByKey([]))
+    >>> send(data, GroupByKey(None, []))
     [[3, 3, 3, 3, 3], [5, 5], [2, 2, 2, 2], [3, 3, 3]]
     """
     cdef:
         object factory, keyfunc, thiskey, grp_output, output
         Consumer this_grp
         
-    def __cinit__(self, target, keyfunc=None, factory=list):
+    def __cinit__(self, keyfunc, target, factory=list):
         cdef Consumer checked
         
         if keyfunc is not None:
@@ -448,9 +448,12 @@ cdef class Switch(Consumer):
         return tuple([t.result_() for t in self.targets])
     
     cdef void send_(self, item) except *:
-        cdef int i
+        cdef:
+            int i
+            Consumer target
         i = self.func(item)
-        <Consumer>self.targets[i].send_(item)
+        target = self.targets[i]
+        target.send_(item)
         
         
 cdef class SwitchByKey(Consumer):

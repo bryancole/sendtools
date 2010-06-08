@@ -14,6 +14,7 @@ setup(name='sendtools',
       version='0.1.0',
       description='Tools for composing consumers for iterators. A companion '
       'to itertools.',
+      long_description = open("README.rst").read(),
       author='Bryan Cole',
       author_email='bryancole.cam@googlemail.com',
       url='http://bitbucket.org/bryancole/sendtools',

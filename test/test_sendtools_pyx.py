@@ -77,7 +77,7 @@ class TestAddToSet(unittest.TestCase):
 class TestGroupByKey(unittest.TestCase):
     def test_key_group(self):
         data = ([1]*5) + ([4]*9) + ([3]*7)
-        result = st.send(data, st.GroupByKey([]) )
+        result = st.send(data, st.GroupByKey(None, []) )
         self.assertTrue(result==[[1]*5,[4]*9,[3]*7])
         
         
@@ -148,6 +148,15 @@ class TestFilter(unittest.TestCase):
         func = lambda x:not x%3
         ret = st.send(data, st.Filter(func, []))
         self.assertEquals(ret, filter(func, data))
+        
+        
+class TestSwitch(unittest.TestCase):
+    def test_simple_switch(self):
+        data = range(10)
+        func = lambda x:int(x<5)
+        ret = st.send(data, st.Switch(func, [],[]))
+        self.assertEquals(ret[1], data[:5])
+        self.assertEquals(ret[0], data[5:])
         
         
 class TestAggregates(unittest.TestCase):
