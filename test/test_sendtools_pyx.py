@@ -184,6 +184,26 @@ class TestAggregates(unittest.TestCase):
         result = st.send(self.data, st.Count())
         self.assertEquals(len(self.data), result)
         
+    def test_all(self):
+        data = [0]*50
+        self.assertEquals(st.send(data,st.All()), all(data))
+        data[33] = 1
+        self.assertEquals(st.send(data,st.All()), all(data))
+        data = [1]*50
+        self.assertEquals(st.send(data,st.All()), all(data))
+        data[33] = 0
+        self.assertEquals(st.send(data,st.All()), all(data))
+        
+    def test_any(self):
+        data = [0]*50
+        self.assertEquals(st.send(data,st.Any()), any(data))
+        data[33] = 1
+        self.assertEquals(st.send(data,st.Any()), any(data))
+        data = [1]*50
+        self.assertEquals(st.send(data,st.Any()), any(data))
+        data[33] = 0
+        self.assertEquals(st.send(data,st.Any()), any(data))
+        
     def test_ave(self):
         result = st.send(self.data, st.Ave())
         self.assertAlmostEquals(sum(self.data)/len(self.data), result)

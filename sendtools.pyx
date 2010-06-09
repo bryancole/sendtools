@@ -505,6 +505,24 @@ cdef class Aggregate(Consumer):
     
     cdef object result_(self):
         return self.output
+    
+    
+cdef class All(Aggregate):
+    def __cinit__(self):
+        self.output = True
+    
+    cdef void send_(self, item) except *:
+        if not item:
+            self.output = False
+            
+
+cdef class Any(Aggregate):
+    def __cinit__(self):
+        self.output = False
+    
+    cdef void send_(self, item) except *:
+        if item:
+            self.output = True
 
 
 cdef class Min(Aggregate):

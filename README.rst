@@ -158,6 +158,7 @@ First, Last, Count.
 
 There are a few more besides these: 
 
+ * All, Any - like the builtin ``all`` and ``any``, but for consumers
  * Select - Picks the n'th item in a sequence
  * Stats - Computes an incremental standard deviation, mean and count of it's input. 
  
