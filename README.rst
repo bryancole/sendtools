@@ -23,6 +23,9 @@ datafiles (HDF5-files, for example).
 Sendtools is written using Cython to produce a 100% compiled module, for maximum 
 performance.
 
+Ideas and further discussion on sendtools can be posted to 
+http://groups.google.com/group/python-sendtools
+
 ------------
 Requirements
 ------------
