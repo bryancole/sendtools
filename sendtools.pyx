@@ -302,6 +302,51 @@ cdef class Attr(ConsumerNode):
         self.target.send_(getattr(item, self.attrname))
         
         
+cdef class Unzip(Consumer):
+    """
+    Unzip(*targets) -> Consumer
+    
+    Unpacks sequences or iterables sent into this consumer into the given
+    sequence of target output consumers.
+    
+    If the input object contains more items than there are targets, the 
+    excess items will be discarded. If fewer items are provided, TypeError
+    will be raised.
+    """
+    cdef:
+        list targets
+        
+    def __cinit__(self, *targets):
+        self.targets = [check(t) for t in targets]
+        
+    cdef object result_(self):
+        cdef Consumer t
+        return tuple([t.result_() for t in self.targets])
+        
+    cdef void send_(self, object item) except *:
+        cdef:
+            int alive=0
+            Consumer t
+            object this
+            
+        items = iter(item)
+        try:
+            for t in self.targets:
+                this = items.next()
+                if t._alive:
+                    try:
+                        t.send_(this)
+                        alive = 1
+                    except StopIteration:
+                        t._alive = 0
+        #StopIteration must have been raised by the items.next() call
+        except StopIteration:
+            raise TypeError("Item length too small. Expecting length %d"%len(self.targets))
+        if alive==0:
+            self._alive = 0
+            raise StopIteration
+        
+        
 cdef class Factory(object):
     cdef object factory
     

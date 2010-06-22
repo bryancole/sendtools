@@ -164,6 +164,35 @@ class TestSwitch(unittest.TestCase):
         self.assertEquals(ret[0], data[5:])
         
         
+class TestUnzip(unittest.TestCase):
+    def test_unpack_tuple(self):
+        data = (("a", "b") for i in xrange(20))
+        a,b = st.send(data, st.Unzip([],[]))
+        self.assertEquals(a, ["a"]*20)
+        self.assertEquals(b, ["b"]*20)
+        
+    def test_insufficient(self):
+        self.assertRaises(TypeError, self.insufficient)
+        
+    def insufficient(self):
+        data = [(1,2,3),
+                (4,5,6),
+                (7,8),
+                (9,10,11)
+                ]
+        a,b,c = st.send(data, st.Unzip([],[],[]))
+        
+    def test_excess(self):
+        data = [(1,2,3),
+                iter((4,5,6)),
+                (7,8,9,10,11),
+                (12,13,14)]
+        a,b,c = st.send(data, st.Unzip([],[],[]))
+        self.assertEquals(a, [1,4,7,12])
+        self.assertEquals(b, [2,5,8,13])
+        self.assertEquals(c, [3,6,9,14])
+        
+        
 class TestAggregates(unittest.TestCase):
     def setUp(self):
         self.data = [random.random() for i in xrange(50)]

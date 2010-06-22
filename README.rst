@@ -212,6 +212,19 @@ This works for any suitable indexing object. For example, columns from a databas
 query can be collected into some lists using this method. Object attributes
 can also be retrieved in a similar manner using the Attr object.
 
+Sequence/iterable unpacking has a further simplification, using the Unzip object. The
+above example can be rewritten as
+
+    >>> a,b = send(tups, Unzip([],[]))
+    >>> a
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    >>> b
+    [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+
+The Unzip object takes any number of Consumers as it's arguments. Sequences or iterables
+can be sent into it. There must be at least enough items in the input container 
+as output targets, otherwise TypeError is raised. Excess input items are discarded.
+
 Grouping and Switching
 ----------------------
 
