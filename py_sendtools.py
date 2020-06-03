@@ -1,6 +1,6 @@
 #from tvl.common.pipeutils import consumer
 import types
-from collections import MutableSet, MutableSequence, MutableMapping
+from collections.abc import MutableSet, MutableSequence, MutableMapping
 import numpy
 from operator import itemgetter as _itemgetter
 
@@ -19,9 +19,9 @@ def make_node(func):
     """
     def wrapper(target, *args, **kwds):
         target = check(target)
-        out = target.next()
+        out = next(target)
         g = func(target, *args, **kwds)
-        g.next()
+        next(g)
         def gen():
             while True:
                 g.send((yield out))
@@ -41,7 +41,7 @@ def check(target):
         return append(target)
     elif isinstance(target, MutableSet):
         return add(target)
-    elif isinstance(target, types.TupleType):
+    elif isinstance(target, tuple):
         return split(*target)
     return target
 
@@ -70,7 +70,7 @@ def gmap(func, target, catch=NoError):
     is sent on to the target
     """
     target = check(target)
-    out = target.next()
+    out = next(target)
     while True:
         try:
             while True:
@@ -83,7 +83,7 @@ def getter(target, idx):
     This is such a common operation, it gets its own consumer
     """
     target = check(target)
-    out = target.next()
+    out = next(target)
     get = _itemgetter(idx)
     while True:
         out = target.send(get((yield out)))
@@ -99,11 +99,11 @@ def pull(itr, target):
     """
     itr = iter(itr)
     target = check(target)
-    out = target.next()
+    out = next(target)
     try:
         while True:
             data = (yield out)
-            out = target.send(itr.next())
+            out = target.send(next(itr))
     except StopIteration:
         raise PipelineError("Iterator exhausted before pipeline complete")
         
@@ -118,7 +118,7 @@ def group(pred, target, factory=list):
     target and factory is called to create the next group.
     """
     target = check(target)
-    out = target.next()
+    out = next(target)
     
     test = factory()
     if type(check(test)) != type(test):
@@ -128,7 +128,7 @@ def group(pred, target, factory=list):
     
     while True:
         grp = f()
-        gout = grp.next()
+        gout = next(grp)
         while True:
             data = (yield out)
             gout = grp.send(data)
@@ -150,7 +150,7 @@ def group_by_n(n, target, factory=list):
     group is not completed, values already sent to it will be lost.
     """
     target = check(target)
-    out = target.next()
+    out = next(target)
     
     test = factory()
     if type(check(test)) != type(test):
@@ -160,8 +160,8 @@ def group_by_n(n, target, factory=list):
     
     while True:
         grp = f()
-        gout = grp.next()
-        for i in xrange(n):
+        gout = next(grp)
+        for i in range(n):
             data = (yield out)
             gout = grp.send(data)
         out = target.send(gout)
@@ -180,7 +180,7 @@ def group_by_key(pred, target, factory=list):
     in the final group will be passed to the target.
     """
     target = check(target)
-    out = target.next()
+    out = next(target)
     
     test = factory()
     if type(check(test)) != type(test):
@@ -192,7 +192,7 @@ def group_by_key(pred, target, factory=list):
     key = pred(data)
     while True:
         grp = f()
-        gout = grp.next()
+        gout = next(grp)
         last_key = key 
         try:
             while key==last_key:
@@ -211,7 +211,7 @@ def gfilter(pred, target):
     True, item is sent to target, otherwise it is discarded.
     """
     target = check(target)
-    out = target.next()
+    out = next(target)
     if pred is None:
         pred = bool
     while True:
@@ -229,7 +229,7 @@ def split(*targets):
     raise them, when the exception is propagated.
     """
     targets = [check(t) for t in targets]
-    out = [t.next() for t in targets]
+    out = [next(t) for t in targets]
     actives = list(enumerate(targets))
     while actives:
         data = (yield tuple(out))
@@ -250,8 +250,8 @@ def limit(n, target):
     Forwards up to at most n items to the target.
     """
     target = check(target)
-    out = target.next()
-    for i in xrange(n):
+    out = next(target)
+    for i in range(n):
         out = target.send((yield out))
         
         
@@ -262,7 +262,7 @@ def unique(target):
     Values passed in previously are dropped.
     """
     target = check(target)
-    out = target.next()
+    out = next(target)
     seen = set()
     while True:
         data = (yield out)
@@ -279,7 +279,7 @@ def switch(test, *targets):
     returns idx, an integer. The item is sent to targets[idx]
     """
     targets = [check(t) for t in targets]
-    out = [t.next() for t in targets]
+    out = [next(t) for t in targets]
     while True:
         data = (yield tuple(out))
         idx = int(test(data))
@@ -300,7 +300,7 @@ def switch_by_key(test, init=None, factory=lambda :[]):
     """
     if init is None:
         init = {}
-    out = dict((k,k.next()) for k in init)
+    out = dict((k,next(k)) for k in init)
     while True:
         data = (yield out)
         key = test(data)
@@ -309,7 +309,7 @@ def switch_by_key(test, init=None, factory=lambda :[]):
             out[key] = val
         except KeyError:
             t = check(factory())
-            t.next()
+            next(t)
             init[key] = t
             val = t.send(data)
             out[key] = val
@@ -318,7 +318,7 @@ def switch_by_key(test, init=None, factory=lambda :[]):
 ###re-merging doesn't work reliably###
 def merge(target):
     target = check(target)
-    out = target.next()
+    out = next(target)
     data = (yield out)
     while data is None:
         data = (yield out)
@@ -338,7 +338,7 @@ def send(itr, target):
            to the target pipeline
     """
     target = check(target)
-    out = target.next()
+    out = next(target)
     try:
         for item in itr:
             out = target.send(item)
@@ -349,7 +349,7 @@ def send(itr, target):
 
 def divert(itr, target):
     target = check(target)
-    out = target.next()
+    out = next(target)
     for item in itr:
         out = target.send(item)
         yield (item, out)
@@ -431,7 +431,7 @@ def select(n, transform=lambda x:x):
     the result is yielded back as an aggregated result
     """
     i = (yield None)
-    for j in xrange(n):
+    for j in range(n):
         i = (yield None)
     i = transform(i)
     while True:
@@ -440,7 +440,7 @@ def select(n, transform=lambda x:x):
 
                     
 if __name__=="__main__":
-    a = range(20)
+    a = list(range(20))
     
 #    pipe(a) | (append(b), 
 #               apply(lambda x:x**2) | apply(lambda x:x-5) | append(c))
@@ -470,21 +470,21 @@ if __name__=="__main__":
                     )
 
          
-    print a
-    print "coav", b
-    print c
-    print d
-    print e
-    print f
-    print g
+    print(a)
+    print("coav", b)
+    print(c)
+    print(d)
+    print(e)
+    print(f)
+    print(g)
     
-    a = send(xrange(1000), (limit(10, []),
+    a = send(range(1000), (limit(10, []),
                                 limit(20, [])))
-    print "limit", a
+    print("limit", a)
     
-    b = send(xrange(30), ([],switch_by_key(lambda x:bool(x%4))))
+    b = send(range(30), ([],switch_by_key(lambda x:bool(x%4))))
     
-    print b
+    print(b)
     
     c = send("hello world", limit(5, unique((first(),last()))))
-    print c
+    print(c)

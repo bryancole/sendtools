@@ -213,7 +213,7 @@ query can be collected into some lists using this method. Object attributes
 can also be retrieved in a similar manner using the Attr object.
 
 Sequence/iterable unpacking has a further simplification, using the Unzip object. The
-above example can be rewritten as
+above example can be rewritten as::
 
     >>> a,b = send(tups, Unzip([],[]))
     >>> a
@@ -260,7 +260,7 @@ create previous groups.
     
 Switching is a very close relative to grouping. The Switch object passes it's
 input to a key-function which must return an int. The input is passed to one
-of N outputs according to this int. I.e.
+of N outputs according to this int. I.e.::
 
     >>> data = [1,2,3,5,4,2,6,3,4,8,5,6,3,1,5,3,6,3,6,4,2]
     >>> send(data, Switch(lambda x:int(x<5), [],[]))
@@ -269,7 +269,7 @@ of N outputs according to this int. I.e.
 The Switch object can take any number of target Consumers.
 
 If you want to collect objects into groups according a key, without preserving
-the order, you need SwitchByKey. This object outputs a dictionary of groups. 
+the order, you need SwitchByKey. This object outputs a dictionary of groups.:: 
 
     >>> data = [1,2,3,5,4,2,6,3,4,8,5,6,3,1,5,3,6,3,6,4,2]
     >>> func = lambda item: "low" if item<5 else "high"

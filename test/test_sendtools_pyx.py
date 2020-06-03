@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import sys
 sys.path.append('..')
 import unittest
@@ -14,7 +14,7 @@ from math import sqrt
 
 class TestSendtools(unittest.TestCase):
     def test_send(self):
-        a = range(5)
+        a = list(range(5))
         b = []
         c = st.send(iter(a), b)
         self.assertTrue(a==c)
@@ -23,7 +23,7 @@ class TestSendtools(unittest.TestCase):
         self.assertTrue(b is c)
         
     def test_split(self):
-        a = range(5)
+        a = list(range(5))
         b,c = st.send(a, ([], []))
         
         self.assertTrue(a==b)
@@ -33,32 +33,32 @@ class TestSendtools(unittest.TestCase):
         self.assertFalse(b is c)
         
     def test_limit(self):
-        a = range(10)
+        a = list(range(10))
         b = st.send(a, st.Limit(5,[]))
-        self.assertEquals(len(b), 5)
-        self.assertEquals(b, a[:5])
+        self.assertEqual(len(b), 5)
+        self.assertEqual(b, a[:5])
         
     def test_split_stop(self):
         a = itertools.count()
         b,c,d = st.send(a, (st.Limit(5,[]),
                             st.Limit(7,[]),
                             st.Limit(9,[])))
-        self.assertEquals(a.next(), 10)
+        self.assertEqual(next(a), 10)
         
     def test_gmap(self):
         a = range(10)
         b = st.send(a, st.Map(lambda x:x*2, []))
-        self.assertEquals(b, [x*2 for x in a])
+        self.assertEqual(b, [x*2 for x in a])
         
     def test_gmap_exc(self):
-        a = range(10)
+        a = list(range(10))
         a[5] = "moo"
         b = st.send(a, st.Map(lambda x:x/2., [], catch=TypeError))
         del a[5]
-        self.assertEquals(b,[x/2. for x in a])
+        self.assertEqual(b,[x/2. for x in a])
         
     def test_group_by_n(self):
-        a = xrange(100)
+        a = range(100)
         b = st.send(a, st.GroupByN(10, []))
         self.assertTrue(all(len(x) for x in b))
         
@@ -69,9 +69,9 @@ class TestSendtools(unittest.TestCase):
         
 class TestAddToSet(unittest.TestCase):
     def test_set(self):
-        data = xrange(10)
+        data = range(10)
         result = st.send(data, set())
-        self.assertEquals(set(data), result)
+        self.assertEqual(set(data), result)
         
         
 class TestGroupByKey(unittest.TestCase):
@@ -88,7 +88,7 @@ class TestSwitchByKey(unittest.TestCase):
         vals = defaultdict(list)
         for item in data:
             vals[item].append(item)
-        self.assertEquals(result, vals)
+        self.assertEqual(result, vals)
         
     def test_no_init_no_factory(self):
         data = [1,2,4,3,2,2,2,3,2,2,3,1,2,4,4,4]
@@ -96,7 +96,7 @@ class TestSwitchByKey(unittest.TestCase):
         vals = defaultdict(list)
         for item in data:
             vals["hello"[item]].append(item)
-        self.assertEquals(result, vals)
+        self.assertEqual(result, vals)
         
     def test_no_init(self):
         data = [1,2,4,3,2,2,2,3,2,2,3,1,2,4,4,4]
@@ -106,7 +106,7 @@ class TestSwitchByKey(unittest.TestCase):
         vals = defaultdict(set)
         for item in data:
             vals[item[0]].add(item[1])
-        self.assertEquals(result, vals)
+        self.assertEqual(result, vals)
         
     def test_gbk(self):
         data = [1,2,4,3,2,2,2,3,2,2,3,1,2,4,4,4]
@@ -122,29 +122,29 @@ class TestSwitchByKey(unittest.TestCase):
         vals[2] = set([i for a,i in data if a==2])
         vals[3] = sum(i for a,i in data if a==3)
         vals[4] = [i for a,i in data if a==4]
-        self.assertEquals(result, vals)
+        self.assertEqual(result, vals)
         
         
 class TestSlice(unittest.TestCase):
     def test_slice_1(self):
-        data = range(10)
+        data = list(range(10))
         ret = st.send(data, st.Slice(7, []))
-        self.assertEquals(ret, data[slice(7)])
+        self.assertEqual(ret, data[slice(7)])
         
     def test_slice_2(self):
-        data = range(20)
+        data = list(range(20))
         ret = st.send(data, st.Slice(7,13, []))
-        self.assertEquals(ret, data[slice(7,13)])
+        self.assertEqual(ret, data[slice(7,13)])
         
     def test_slice_3(self):
-        data = range(30)
+        data = list(range(30))
         ret = st.send(data, st.Slice(7,23,3, []))
-        self.assertEquals(ret, data[slice(7,23,3)])
+        self.assertEqual(ret, data[slice(7,23,3)])
         
     def test_slice_4(self):
-        data = range(30)
+        data = list(range(30))
         ret = st.send(data, st.Slice(None,None,3, []))
-        self.assertEquals(ret, data[slice(None,None,3)])
+        self.assertEqual(ret, data[slice(None,None,3)])
         
         
 class TestFilter(unittest.TestCase):
@@ -152,24 +152,24 @@ class TestFilter(unittest.TestCase):
         data = range(30)
         func = lambda x:not x%3
         ret = st.send(data, st.Filter(func, []))
-        self.assertEquals(ret, filter(func, data))
+        self.assertEqual(ret, list(filter(func, data)))
         
         
 class TestSwitch(unittest.TestCase):
     def test_simple_switch(self):
-        data = range(10)
+        data = list(range(10))
         func = lambda x:int(x<5)
         ret = st.send(data, st.Switch(func, [],[]))
-        self.assertEquals(ret[1], data[:5])
-        self.assertEquals(ret[0], data[5:])
+        self.assertEqual(ret[1], data[:5])
+        self.assertEqual(ret[0], data[5:])
         
         
 class TestUnzip(unittest.TestCase):
     def test_unpack_tuple(self):
-        data = (("a", "b") for i in xrange(20))
+        data = (("a", "b") for i in range(20))
         a,b = st.send(data, st.Unzip([],[]))
-        self.assertEquals(a, ["a"]*20)
-        self.assertEquals(b, ["b"]*20)
+        self.assertEqual(a, ["a"]*20)
+        self.assertEqual(b, ["b"]*20)
         
     def test_insufficient(self):
         self.assertRaises(TypeError, self.insufficient)
@@ -188,75 +188,75 @@ class TestUnzip(unittest.TestCase):
                 (7,8,9,10,11),
                 (12,13,14)]
         a,b,c = st.send(data, st.Unzip([],[],[]))
-        self.assertEquals(a, [1,4,7,12])
-        self.assertEquals(b, [2,5,8,13])
-        self.assertEquals(c, [3,6,9,14])
+        self.assertEqual(a, [1,4,7,12])
+        self.assertEqual(b, [2,5,8,13])
+        self.assertEqual(c, [3,6,9,14])
         
         
 class TestAggregates(unittest.TestCase):
     def setUp(self):
-        self.data = [random.random() for i in xrange(50)]
+        self.data = [random.random() for i in range(50)]
     
     def test_max(self):
         result = st.send(self.data, st.Max())
-        self.assertEquals(max(self.data), result)
+        self.assertEqual(max(self.data), result)
         
     def test_min(self):
         result = st.send(self.data, st.Min())
-        self.assertEquals(min(self.data), result)
+        self.assertEqual(min(self.data), result)
         
     def test_sum(self):
         result = st.send(self.data, st.Sum())
-        self.assertEquals(sum(self.data), result)
+        self.assertEqual(sum(self.data), result)
         
     def test_count(self):
         result = st.send(self.data, st.Count())
-        self.assertEquals(len(self.data), result)
+        self.assertEqual(len(self.data), result)
         
     def test_all(self):
         data = [0]*50
-        self.assertEquals(st.send(data,st.All()), all(data))
+        self.assertEqual(st.send(data,st.All()), all(data))
         data[33] = 1
-        self.assertEquals(st.send(data,st.All()), all(data))
+        self.assertEqual(st.send(data,st.All()), all(data))
         data = [1]*50
-        self.assertEquals(st.send(data,st.All()), all(data))
+        self.assertEqual(st.send(data,st.All()), all(data))
         data[33] = 0
-        self.assertEquals(st.send(data,st.All()), all(data))
+        self.assertEqual(st.send(data,st.All()), all(data))
         
     def test_any(self):
         data = [0]*50
-        self.assertEquals(st.send(data,st.Any()), any(data))
+        self.assertEqual(st.send(data,st.Any()), any(data))
         data[33] = 1
-        self.assertEquals(st.send(data,st.Any()), any(data))
+        self.assertEqual(st.send(data,st.Any()), any(data))
         data = [1]*50
-        self.assertEquals(st.send(data,st.Any()), any(data))
+        self.assertEqual(st.send(data,st.Any()), any(data))
         data[33] = 0
-        self.assertEquals(st.send(data,st.Any()), any(data))
+        self.assertEqual(st.send(data,st.Any()), any(data))
         
     def test_ave(self):
         result = st.send(self.data, st.Ave())
-        self.assertAlmostEquals(sum(self.data)/len(self.data), result)
+        self.assertAlmostEqual(sum(self.data)/len(self.data), result)
         
     def test_stats(self):
         result = st.send(self.data, st.Stats())
         N = len(self.data)
         mean = sum(self.data)/N
-        self.assertAlmostEquals(mean, result[1])
+        self.assertAlmostEqual(mean, result[1])
         std = sqrt(sum((x-mean)**2 for x in self.data)/(N-1))
-        self.assertAlmostEquals(std, result[2])
-        self.assertEquals(N, result[0])
+        self.assertAlmostEqual(std, result[2])
+        self.assertEqual(N, result[0])
         
     def test_select(self):
         data = range(10)
         for i in data:
             val = st.send(data, st.Select(i))
-            self.assertEquals(val, i)
+            self.assertEqual(val, i)
             
     def test_select_trans(self):
         data = range(10)
         for i in data:
             val = st.send(data, st.Select(i,transform=lambda x:2*x))
-            self.assertEquals(val, i*2)
+            self.assertEqual(val, i*2)
             
         
         

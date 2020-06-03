@@ -2,9 +2,9 @@
 """
 A cython implementation of the sendtools API
 """
-from collections import MutableSequence, MutableSet, Callable, defaultdict,\
-            MutableMapping
-from types import TupleType, GeneratorType
+from collections.abc import MutableSequence, MutableSet, Callable, MutableMapping
+from collections import defaultdict
+from types import GeneratorType
 from math import sqrt
 
 
@@ -332,7 +332,7 @@ cdef class Unzip(Consumer):
         items = iter(item)
         try:
             for t in self.targets:
-                this = items.next()
+                this = next(items)
                 if t._alive:
                     try:
                         t.send_(this)
@@ -692,7 +692,7 @@ cdef check(target):
             return Append(target)
     elif isinstance(target, MutableSet):
         return AddToSet(target)
-    elif isinstance(target, TupleType):
+    elif isinstance(target, tuple):
         return Split(*target)
     else:
         raise TypeError("Can't convert %s to Consumer"%repr(target))
@@ -735,7 +735,7 @@ cdef class GeneratorConsumer(Consumer):
     
     def __cinit__(self, gen):
         self.gen = gen
-        self.out = gen.next()
+        self.out = next(gen)
         
     cdef void send_(self, item) except *:
         self.out = self.gen.send(item)

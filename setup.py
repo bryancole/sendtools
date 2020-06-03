@@ -1,32 +1,28 @@
-#!/usr/bin/env python
-from distribute_setup import use_setuptools
-use_setuptools()
+#!/usr/bin/env python3
 
-from distutils.core import setup
-from distutils.extension import Extension
-from Cython.Distutils import build_ext
+from setuptools import setup
+from Cython.Build import cythonize
 
 #from setuptools import setup
 
-ext_modules = [Extension("sendtools", ["sendtools.pyx"])]
+#ext_modules = [Extension("sendtools", ["sendtools.pyx"])]
+ext_modules = cythonize("sendtools.pyx")
 
 setup(name='sendtools',
-      version='0.1.1',
+      version='1.0',
       description='Tools for composing consumers for iterators. A companion '
       'to itertools.',
       long_description = open("README.rst").read(),
       author='Bryan Cole',
-      author_email='bryancole.cam@googlemail.com',
+      author_email='bryancole.cam@gmail.com',
       url='http://bitbucket.org/bryancole/sendtools',
-      long_description = open("README.rst").read(),
-      cmdclass = {'build_ext': build_ext},
       ext_modules = ext_modules,
       classifiers=['Development Status :: 3 - Alpha',
                 'Intended Audience :: Developers',
                 'License :: OSI Approved :: Python Software Foundation License',
                 'Natural Language :: English',
                 'Operating System :: OS Independent',
-                'Programming Language :: Python :: 2.6',
+                'Programming Language :: Python :: 3.4',
                 'Topic :: Utilities'
             ]
      )
